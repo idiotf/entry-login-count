@@ -1,0 +1,10 @@
+{
+  "name": "Entry Login Count",
+  "description": "엔트리에서 로그인한 횟수를 표시해줍니다.",
+  "version": "0.0.1",
+  "manifest_version": 3,
+  "content_scripts": [{
+    "matches": ["https://playentry.org/*"],
+    "js": ["dist/index.js"]
+  }]
+}
