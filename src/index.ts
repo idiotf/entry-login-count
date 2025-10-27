@@ -16,27 +16,40 @@ async function request(query: string, variables: object) {
   return res.json()
 }
 
-const loginCountCache = new Map<string, number>()
-
-async function getLoginCount(id: string) {
-  if (loginCountCache.has(id)) return loginCountCache.get(id)
-
-  const loginCount = (await request('query FIND_USERSTATUS_BY_USERNAME($id:String){userstatus(id:$id){loginCount}}', {
-    id,
-  })).data.userstatus.loginCount
-
-  loginCountCache.set(id, loginCount)
-  return loginCount
+interface LoginData {
+  lastLogin: string
+  loginCount: number
 }
 
-new MutationObserver(async () => {
+const loginDataCache = new Map<string, LoginData>()
+
+async function getLoginData(id: string) {
+  const cache = loginDataCache.get(id)
+  if (cache) return cache
+
+  const data: LoginData = (await request('query FIND_USERSTATUS_BY_USERNAME($id:String){userstatus(id:$id){lastLogin,loginCount}}', {
+    id,
+  })).data.userstatus
+
+  loginDataCache.set(id, data)
+  return data
+}
+
+async function addProfileData(container: Element, label: string, content: string | Promise<string>) {
+  const span = container.appendChild(document.createElement('span'))
+  span.textContent = label
+
+  const em = span.appendChild(document.createElement('em'))
+  em.textContent = await content
+}
+
+new MutationObserver(() => {
   const div = document.querySelector('.e1e59sjh1')
   if (!div || (div as any).__createdSuggestionItem) return
   ;(div as any).__createdSuggestionItem = true
 
-  const span = div.appendChild(document.createElement('span'))
-  span.textContent = '로그인 횟수 '
+  const data = getLoginData(location.pathname.match(/[0-9a-f]{24}/)?.[0]!)
 
-  const em = span.appendChild(document.createElement('em'))
-  em.textContent = await getLoginCount(location.pathname.match(/[0-9a-f]{24}/)?.[0]!)
+  addProfileData(div, '로그인 횟수 ', data.then(({ loginCount }) => loginCount + ''))
+  addProfileData(div, '최종 로그인 ', data.then(({ lastLogin }) => new Date(lastLogin).toLocaleDateString()))
 }).observe(document, { childList: true, subtree: true })
